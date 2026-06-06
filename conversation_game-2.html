@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>会話練習ゲーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #22c55e;
+    --green-light: #dcfce7;
+    --green-dark: #15803d;
+    --blue: #3b82f6;
+    --blue-light: #dbeafe;
+    --red: #ef4444;
+    --red-light: #fee2e2;
+    --yellow: #f59e0b;
+    --yellow-light: #fef3c7;
+    --bg: #f0fdf4;
+    --card: #ffffff;
+    --text: #1a2e1a;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --radius: 16px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: 'Nunito', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 80px;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--green);
+    color: white;
+    padding: 16px 20px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(34,197,94,0.3);
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .app-title {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+
+  .score-badge {
+    background: rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  /* Translation toggle */
+  .trans-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    color: var(--green-dark);
+    border: none;
+    border-radius: 24px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    font-family: inherit;
+    transition: background 0.2s;
+  }
+
+  .trans-btn.on { background: white; color: var(--green-dark); }
+  .trans-btn.off { background: rgba(255,255,255,0.3); color: white; }
+
+  .trans-icon { font-size: 18px; }
+
+  /* Stage selector */
+  .stage-tabs {
+    display: flex;
+    gap: 0;
+    margin: 16px 16px 0;
+    background: white;
+    border-radius: 12px;
+    padding: 4px;
+    box-shadow: var(--shadow);
+  }
+
+  .stage-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .stage-tab.active {
+    background: var(--green);
+    color: white;
+    box-shadow: 0 2px 8px rgba(34,197,94,0.4);
+  }
+
+  /* Progress */
+  .unit-title {
+    margin: 12px 16px 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--green-dark);
+  }
+
+  .unit-title ruby rt { font-size: 10px; color: var(--text-muted); }
+
+  .progress-wrap {
+    margin: 12px 16px 0;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  /* Question card */
+  .question-card {
+    margin: 12px 16px 0;
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1.5px solid var(--border);
+  }
+
+  .q-label {
+    display: inline-block;
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .q-topic {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .q-topic ruby rt { font-size: 11px; color: var(--text-muted); }
+    font-size: 17px;
+    line-height: 1.7;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .q-text ruby rt {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .q-english {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  /* Stage 2 fill-in */
+  .fill-blank {
+    display: inline-block;
+    min-width: 60px;
+    border-bottom: 2.5px solid var(--blue);
+    color: var(--blue);
+    font-weight: 700;
+    padding: 0 4px;
+    margin: 0 2px;
+  }
+
+  /* Choices */
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 16px 0;
+  }
+
+  .choice-btn {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--text);
+    transition: all 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    line-height: 1.6;
+  }
+
+  .choice-btn ruby rt {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .choice-btn:active { transform: scale(0.98); }
+
+  .choice-btn.correct {
+    background: var(--green-light);
+    border-color: var(--green);
+    color: var(--green-dark);
+  }
+
+  .choice-btn.wrong {
+    background: var(--red-light);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .choice-btn:disabled { cursor: default; }
+
+  .choice-en {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 3px;
+    font-style: italic;
+  }
+
+  /* Feedback */
+  .feedback {
+    margin: 10px 16px 0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .feedback.show { display: flex; }
+  .feedback.correct { background: var(--green-light); color: var(--green-dark); }
+  .feedback.wrong { background: var(--red-light); color: var(--red); }
+  .feedback-icon { font-size: 20px; }
+
+  /* Next button */
+  .next-btn {
+    display: none;
+    margin: 12px 16px 0;
+    width: calc(100% - 32px);
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+    box-shadow: 0 3px 10px rgba(34,197,94,0.35);
+  }
+
+  .next-btn.show { display: block; }
+  .next-btn:active { background: var(--green-dark); }
+
+  /* Result screen */
+  .result-screen {
+    display: none;
+    margin: 20px 16px;
+    text-align: center;
+  }
+
+  .result-screen.show { display: block; }
+
+  .result-emoji { font-size: 64px; margin-bottom: 12px; }
+
+  .result-title {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .result-score {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--green);
+    margin: 12px 0;
+  }
+
+  .result-msg {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  .restart-btn {
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 36px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    margin-bottom: 10px;
+    width: 100%;
+    box-shadow: 0 3px 10px rgba(34,197,94,0.35);
+  }
+
+  .switch-btn {
+    background: white;
+    color: var(--green-dark);
+    border: 1.5px solid var(--green);
+    border-radius: 12px;
+    padding: 12px 36px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+  }
+
+  .stars {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 8px 0 16px;
+    font-size: 32px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  .pop { animation: pop 0.3s ease; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">🌸 会話<ruby>練習<rt>れんしゅう</rt></ruby>ゲーム</div>
+      <div class="score-badge">⭐ <span id="score">0</span><ruby>点<rt>てん</rt></ruby></div>
+    </div>
+    <button class="trans-btn off" id="transBtn" onclick="toggleTrans()">
+      <span class="trans-icon">🌐</span>
+      <span id="transBtnText"><ruby>英語訳<rt>えいごやく</rt></ruby>: OFF</span>
+    </button>
+  </div>
+
+  <!-- Stage tabs -->
+  <div class="stage-tabs">
+    <button class="stage-tab active" id="tab1" onclick="switchStage(1)">
+      ステージ１<br><small style="font-weight:400;font-size:11px"><ruby>返事<rt>へんじ</rt></ruby>を<ruby>選<rt>えら</rt></ruby>ぼう</small>
+    </button>
+    <button class="stage-tab" id="tab2" onclick="switchStage(2)">
+      ステージ２<br><small style="font-weight:400;font-size:11px"><ruby>文法<rt>ぶんぽう</rt></ruby>を<ruby>選<rt>えら</rt></ruby>ぼう</small>
+    </button>
+  </div>
+
+  <!-- Unit title -->
+  <div class="unit-title" id="unitTitle">①<ruby>自己紹介<rt>じこしょうかい</rt></ruby></div>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-info">
+      <span><ruby>問題<rt>もんだい</rt></ruby> <span id="qNum">1</span> / 6</span>
+      <span><ruby>正解<rt>せいかい</rt></ruby>: <span id="correctCount">0</span></span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Question -->
+  <div class="question-card" id="questionCard">
+    <div class="q-label" id="qLabel">QUESTION</div>
+    <div class="q-topic" id="qTopic" style="display:none"></div>
+    <div class="q-text" id="qText" style="display:none"></div>
+    <div class="q-english" id="qEnglish" style="display:none"></div>
+  </div>
+
+  <!-- Choices -->
+  <div class="choices" id="choices"></div>
+
+  <!-- Feedback -->
+  <div class="feedback" id="feedback">
+    <span class="feedback-icon" id="feedbackIcon"></span>
+    <span id="feedbackText"></span>
+  </div>
+
+  <!-- Next button -->
+  <button class="next-btn" id="nextBtn" onclick="nextQuestion()">
+    つぎの<ruby>問題<rt>もんだい</rt></ruby>へ →
+  </button>
+
+  <!-- Result -->
+  <div class="result-screen" id="resultScreen">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <div class="result-title"><ruby>結果<rt>けっか</rt></ruby></div>
+    <div class="stars" id="starsDisplay"></div>
+    <div class="result-score"><span id="finalScore">0</span> / 6</div>
+    <div class="result-msg" id="resultMsg"></div>
+    <button class="restart-btn" onclick="restart()">もう一度<ruby>挑戦<rt>ちょうせん</rt></ruby>する 🔄</button>
+    <button class="switch-btn" id="switchStageBtn" onclick="goNextStage()">ステージ２へ進む →</button>
+  </div>
+
+</div>
+
+<script>
+// ===== DATA =====
+const stage1Answers = [
+  {
+    text: `グエン・ティ・ホンと<ruby>申<rt>もう</rt></ruby>します。ホアと<ruby>呼<rt>よ</rt></ruby>んでください。`,
+    en: "My name is Nguyen Thi Hong. Please call me Hoa."
+  },
+  {
+    text: `ホアは「<ruby>花<rt>はな</rt></ruby>」という<ruby>意味<rt>いみ</rt></ruby>です。`,
+    en: 'Hoa means "flower."'
+  },
+  {
+    text: `ベトナムのダナンという<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。`,
+    en: "I came from Da Nang, Vietnam."
+  },
+  {
+    text: `<ruby>先週<rt>せんしゅう</rt></ruby>、<ruby>日本<rt>にほん</rt></ruby>に<ruby>来<rt>き</rt></ruby>たばかりです。`,
+    en: "I just came to Japan last week."
+  },
+  {
+    text: `<ruby>趣味<rt>しゅみ</rt></ruby>は<ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>くことです。`,
+    en: "My hobby is listening to music."
+  },
+  {
+    text: `どうぞよろしくお<ruby>願<rt>ねが</rt></ruby>いします。`,
+    en: "I look forward to working with you."
+  }
+];
+
+const stage1Questions = [
+  {
+    topic: `<ruby>名前<rt>なまえ</rt></ruby>・<ruby>呼<rt>よ</rt></ruby>び<ruby>方<rt>かた</rt></ruby>`,
+    topicEn: "Name & What to Call You",
+    prompt: `はじめまして。お<ruby>名前<rt>なまえ</rt></ruby>は？`,
+    promptEn: "Nice to meet you. What is your name?",
+    answerIdx: 0
+  },
+  {
+    topic: `<ruby>名前<rt>なまえ</rt></ruby>の<ruby>意味<rt>いみ</rt></ruby>`,
+    topicEn: "Meaning of Your Name",
+    prompt: `ホアさん、<ruby>名前<rt>なまえ</rt></ruby>はどんな<ruby>意味<rt>いみ</rt></ruby>ですか？`,
+    promptEn: "Hoa, what does your name mean?",
+    answerIdx: 1
+  },
+  {
+    topic: `<ruby>出身<rt>しゅっしん</rt></ruby>`,
+    topicEn: "Where You're From",
+    prompt: `どちらから<ruby>来<rt>き</rt></ruby>ましたか？`,
+    promptEn: "Where are you from?",
+    answerIdx: 2
+  },
+  {
+    topic: `いつ<ruby>来<rt>き</rt></ruby>たか`,
+    topicEn: "When You Came",
+    prompt: `いつ<ruby>日本<rt>にほん</rt></ruby>に<ruby>来<rt>き</rt></ruby>ましたか？`,
+    promptEn: "When did you come to Japan?",
+    answerIdx: 3
+  },
+  {
+    topic: `<ruby>趣味<rt>しゅみ</rt></ruby>`,
+    topicEn: "Hobbies",
+    prompt: `<ruby>趣味<rt>しゅみ</rt></ruby>は<ruby>何<rt>なん</rt></ruby>ですか？`,
+    promptEn: "What are your hobbies?",
+    answerIdx: 4
+  },
+  {
+    topic: `<ruby>終<rt>お</rt></ruby>わりのことば`,
+    topicEn: "Closing Words",
+    prompt: `<ruby>終<rt>お</rt></ruby>わりのことばをどうぞ。`,
+    promptEn: "Please say your closing words.",
+    answerIdx: 5
+  }
+];
+
+const stage2Questions = [
+  {
+    prompt: `<ruby>名前<rt>なまえ</rt></ruby>：<br>グエン・ティ・ホンと（　）。`,
+    promptEn: "My name is Nguyen Thi Hong ( ).",
+    answer: `<ruby>申<rt>もう</rt></ruby>します`,
+    answerEn: "mōshimasu (polite form of 'to say')",
+    choices: [
+      { text: `<ruby>申<rt>もう</rt></ruby>します`, en: "mōshimasu", correct: true },
+      { text: `います`, en: "imasu", correct: false },
+      { text: `<ruby>話<rt>はな</rt></ruby>します`, en: "hanashimasu", correct: false },
+      { text: `なります`, en: "narimasu", correct: false }
+    ]
+  },
+  {
+    prompt: `<ruby>名前<rt>なまえ</rt></ruby>の<ruby>意味<rt>いみ</rt></ruby>：<br>ホアは「<ruby>花<rt>はな</rt></ruby>」（　）<ruby>意味<rt>いみ</rt></ruby>です。`,
+    promptEn: 'Hoa means ( ) "flower."',
+    answer: `という`,
+    answerEn: "to iu (meaning 'called' or 'meaning')",
+    choices: [
+      { text: `という`, en: "to iu", correct: true },
+      { text: `とか`, en: "toka", correct: false },
+      { text: `ような`, en: "yōna", correct: false },
+      { text: `だから`, en: "dakara", correct: false }
+    ]
+  },
+  {
+    prompt: `<ruby>呼<rt>よ</rt></ruby>び<ruby>方<rt>かた</rt></ruby>：<br>ホア（　）<ruby>呼<rt>よ</rt></ruby>んでください。`,
+    promptEn: "Please call me ( ) Hoa.",
+    answer: `と`,
+    answerEn: "to (particle meaning 'as/by the name of')",
+    choices: [
+      { text: `と`, en: "to", correct: true },
+      { text: `が`, en: "ga", correct: false },
+      { text: `に`, en: "ni", correct: false },
+      { text: `を`, en: "wo", correct: false }
+    ]
+  },
+  {
+    prompt: `いつ<ruby>来<rt>き</rt></ruby>たか：<br><ruby>先週<rt>せんしゅう</rt></ruby>、<ruby>日本<rt>にほん</rt></ruby>に<ruby>来<rt>き</rt></ruby>た（　）です。`,
+    promptEn: "I came to Japan last week ( ).",
+    answer: `ばかり`,
+    answerEn: "bakari (just / only recently)",
+    choices: [
+      { text: `ばかり`, en: "bakari", correct: true },
+      { text: `ところ`, en: "tokoro", correct: false },
+      { text: `らしい`, en: "rashii", correct: false },
+      { text: `まで`, en: "made", correct: false }
+    ]
+  },
+  {
+    prompt: `<ruby>趣味<rt>しゅみ</rt></ruby>：<br><ruby>趣味<rt>しゅみ</rt></ruby>は<ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>く（　）です。`,
+    promptEn: "My hobby is ( ) listening to music.",
+    answer: `こと`,
+    answerEn: "koto (nominalizer, turns verb into noun)",
+    choices: [
+      { text: `こと`, en: "koto", correct: true },
+      { text: `もの`, en: "mono", correct: false },
+      { text: `ため`, en: "tame", correct: false },
+      { text: `とき`, en: "toki", correct: false }
+    ]
+  },
+  {
+    prompt: `<ruby>日本語<rt>にほんご</rt></ruby>の<ruby>学習経験<rt>がくしゅうけいけん</rt></ruby>：<br><ruby>日本語<rt>にほんご</rt></ruby>は、<ruby>日本<rt>にほん</rt></ruby>に<ruby>来<rt>く</rt></ruby>る（　）、1<ruby>年間<rt>ねんかん</rt></ruby> <ruby>勉強<rt>べんきょう</rt></ruby>しました。`,
+    promptEn: "I studied Japanese for one year ( ) coming to Japan.",
+    answer: `<ruby>前<rt>まえ</rt></ruby>に`,
+    answerEn: "mae ni (before)",
+    choices: [
+      { text: `<ruby>前<rt>まえ</rt></ruby>に`, en: "mae ni (before)", correct: true },
+      { text: `<ruby>後<rt>あと</rt></ruby>で`, en: "ato de (after)", correct: false },
+      { text: `から`, en: "kara (after / from)", correct: false },
+      { text: `ために`, en: "tame ni (in order to)", correct: false }
+    ]
+  }
+];
+
+// ===== STATE =====
+let currentStage = 1;
+let showTranslation = false;
+let questions = [];
+let qOrder = [];
+let currentIdx = 0;
+let score = 0;
+let correctCount = 0;
+let answered = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function init() {
+  questions = currentStage === 1 ? stage1Questions : stage2Questions;
+  qOrder = shuffle([...Array(questions.length).keys()]);
+  currentIdx = 0;
+  score = 0;
+  correctCount = 0;
+  document.getElementById('score').textContent = score;
+  document.getElementById('correctCount').textContent = correctCount;
+  document.getElementById('resultScreen').classList.remove('show');
+  document.getElementById('questionCard').style.display = '';
+  document.getElementById('choices').style.display = '';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  answered = false;
+  const q = questions[qOrder[currentIdx]];
+
+  // Progress
+  document.getElementById('qNum').textContent = currentIdx + 1;
+  document.getElementById('progressFill').style.width = ((currentIdx) / 6 * 100) + '%';
+
+  // Question
+  const topicEl = document.getElementById('qTopic');
+  const qTextEl = document.getElementById('qText');
+  if (currentStage === 1 && q.topic) {
+    topicEl.innerHTML = q.topic + (showTranslation && q.topicEn ? `<span style="display:block;font-size:12px;font-weight:400;color:var(--text-muted);font-style:italic;margin-top:2px">${q.topicEn}</span>` : '');
+    topicEl.style.display = 'block';
+    qTextEl.style.display = 'none';
+  } else {
+    topicEl.style.display = 'none';
+    qTextEl.style.display = 'block';
+  }
+  qTextEl.innerHTML = q.prompt;
+  const engEl = document.getElementById('qEnglish');
+  engEl.textContent = q.promptEn;
+  engEl.style.display = showTranslation ? 'block' : 'none';
+
+  // Choices
+  let choicesList;
+  if (currentStage === 1) {
+    const correctIdx = q.answerIdx;
+    const otherIdxs = shuffle([...Array(6).keys()].filter(i => i !== correctIdx)).slice(0, 3);
+    const selected = shuffle([correctIdx, ...otherIdxs]);
+    choicesList = selected.map(i => ({
+      text: stage1Answers[i].text,
+      en: stage1Answers[i].en,
+      correct: i === correctIdx
+    }));
+  } else {
+    choicesList = shuffle(q.choices);
+  }
+  const shuffledChoices = choicesList;
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  shuffledChoices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = c.text + (showTranslation ? `<span class="choice-en">${c.en}</span>` : '');
+    btn.dataset.correct = c.correct ? 'true' : 'false';
+    btn.onclick = () => selectAnswer(c.correct, btn, choicesEl);
+    choicesEl.appendChild(btn);
+  });
+
+  // Reset feedback & next
+  const fb = document.getElementById('feedback');
+  fb.classList.remove('show', 'correct', 'wrong');
+  document.getElementById('nextBtn').classList.remove('show');
+}
+
+function selectAnswer(isCorrect, btn, container) {
+  if (answered) return;
+  answered = true;
+
+  const allBtns = container.querySelectorAll('.choice-btn');
+  allBtns.forEach(b => b.disabled = true);
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    score += 10;
+    correctCount++;
+    document.getElementById('score').textContent = score;
+    document.getElementById('correctCount').textContent = correctCount;
+    showFeedback(true);
+  } else {
+    btn.classList.add('wrong');
+    allBtns.forEach(b => {
+      if (b.dataset.correct === 'true') b.classList.add('correct');
+    });
+    showFeedback(false);
+  }
+
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+function showFeedback(isCorrect) {
+  const fb = document.getElementById('feedback');
+  fb.classList.remove('correct', 'wrong');
+  fb.classList.add('show', isCorrect ? 'correct' : 'wrong');
+  document.getElementById('feedbackIcon').textContent = isCorrect ? '✅' : '❌';
+  document.getElementById('feedbackText').textContent = isCorrect
+    ? 'すばらしい！正解です！'
+    : 'ざんねん…もう一度挑戦しよう！';
+}
+
+function nextQuestion() {
+  currentIdx++;
+  if (currentIdx >= 6) {
+    showResult();
+    return;
+  }
+  renderQuestion();
+  document.getElementById('feedback').classList.remove('show');
+  document.getElementById('nextBtn').classList.remove('show');
+}
+
+function showResult() {
+  document.getElementById('questionCard').style.display = 'none';
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('feedback').classList.remove('show');
+  document.getElementById('nextBtn').classList.remove('show');
+  document.getElementById('progressFill').style.width = '100%';
+
+  const rs = document.getElementById('resultScreen');
+  rs.classList.add('show');
+
+  document.getElementById('finalScore').textContent = correctCount;
+
+  let emoji = '🎉', msg = '', stars = '';
+  if (correctCount === 6) {
+    emoji = '🏆'; msg = 'パーフェクト！すばらしい！'; stars = '⭐⭐⭐';
+  } else if (correctCount >= 4) {
+    emoji = '😊'; msg = 'よくできました！もう少し！'; stars = '⭐⭐';
+  } else {
+    emoji = '💪'; msg = 'もう一度がんばろう！'; stars = '⭐';
+  }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultMsg').textContent = msg;
+  document.getElementById('starsDisplay').textContent = stars;
+
+  const switchBtn = document.getElementById('switchStageBtn');
+  if (currentStage === 1) {
+    switchBtn.style.display = 'block';
+    switchBtn.textContent = 'ステージ２へ進む →';
+  } else {
+    switchBtn.style.display = 'block';
+    switchBtn.textContent = 'ステージ１へ戻る ←';
+  }
+}
+
+function restart() {
+  init();
+}
+
+function goNextStage() {
+  currentStage = currentStage === 1 ? 2 : 1;
+  document.getElementById('tab1').classList.toggle('active', currentStage === 1);
+  document.getElementById('tab2').classList.toggle('active', currentStage === 2);
+  init();
+}
+
+function switchStage(n) {
+  if (currentStage === n) return;
+  currentStage = n;
+  document.getElementById('tab1').classList.toggle('active', n === 1);
+  document.getElementById('tab2').classList.toggle('active', n === 2);
+  init();
+}
+
+function toggleTrans() {
+  showTranslation = !showTranslation;
+  const btn = document.getElementById('transBtn');
+  const txt = document.getElementById('transBtnText');
+  btn.className = 'trans-btn ' + (showTranslation ? 'on' : 'off');
+  txt.innerHTML = showTranslation
+    ? '<ruby>英語訳<rt>えいごやく</rt></ruby>: ON'
+    : '<ruby>英語訳<rt>えいごやく</rt></ruby>: OFF';
+
+  // Refresh translation visibility
+  document.getElementById('qEnglish').style.display = showTranslation ? 'block' : 'none';
+  // Refresh topic
+  const q = questions[qOrder[currentIdx]];
+  const topicEl = document.getElementById('qTopic');
+  if (currentStage === 1 && q && q.topic) {
+    topicEl.innerHTML = q.topic + (showTranslation && q.topicEn ? `<span style="display:block;font-size:12px;font-weight:400;color:var(--text-muted);font-style:italic;margin-top:2px">${q.topicEn}</span>` : '');
+  }
+  document.querySelectorAll('.choice-en').forEach(el => {
+    el.style.display = showTranslation ? 'block' : 'none';
+  });
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
