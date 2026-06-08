@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>会話練習ゲーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #22c55e; --green-light: #dcfce7; --green-dark: #15803d;
+    --red: #ef4444; --red-light: #fee2e2;
+    --bg: #f0fdf4; --text: #1a2e1a; --text-muted: #6b7280;
+    --border: #e5e7eb; --radius: 16px; --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  body { font-family: 'Nunito','Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+  .app { max-width:480px; margin:0 auto; padding:0 0 80px; min-height:100vh; }
+
+  .header { background:var(--green); color:white; padding:16px 20px 12px; position:sticky; top:0; z-index:10; box-shadow:0 2px 8px rgba(34,197,94,0.3); }
+  .header-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .app-title { font-size:15px; font-weight:800; }
+  .score-badge { background:rgba(255,255,255,0.25); border-radius:20px; padding:4px 12px; font-size:14px; font-weight:700; }
+  .trans-btn { display:flex; align-items:center; gap:8px; border:none; border-radius:24px; padding:8px 18px; font-size:14px; font-weight:700; cursor:pointer; width:100%; justify-content:center; font-family:inherit; }
+  .trans-btn.on { background:white; color:var(--green-dark); }
+  .trans-btn.off { background:rgba(255,255,255,0.3); color:white; }
+
+  .stage-tabs { display:flex; margin:16px 16px 0; background:white; border-radius:12px; padding:4px; box-shadow:var(--shadow); }
+  .stage-tab { flex:1; padding:8px 4px; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; background:transparent; color:var(--text-muted); line-height:1.4; }
+  .stage-tab.active { background:var(--green); color:white; box-shadow:0 2px 8px rgba(34,197,94,0.4); }
+
+  .unit-title { margin:12px 16px 0; font-size:15px; font-weight:800; color:var(--green-dark); }
+
+  .progress-wrap { margin:10px 16px 0; }
+  .progress-info { display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:600; }
+  .progress-bar { height:6px; background:var(--border); border-radius:99px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--green); border-radius:99px; transition:width 0.4s ease; }
+
+  .question-card { margin:12px 16px 0; background:white; border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); border:1.5px solid var(--border); }
+  .q-label { display:inline-block; background:var(--green-light); color:var(--green-dark); font-size:11px; font-weight:800; letter-spacing:1px; padding:3px 10px; border-radius:20px; margin-bottom:12px; text-transform:uppercase; }
+  .q-topic { font-size:17px; font-weight:700; color:var(--text); line-height:1.7; }
+  .q-english { font-size:13px; color:var(--text-muted); font-style:italic; margin-top:8px; line-height:1.5; }
+
+  ruby { display:inline-flex; flex-direction:column-reverse; align-items:center; vertical-align:bottom; line-height:1.4; }
+  ruby rt { font-size:10px; line-height:1; color:var(--text-muted); }
+
+  .choices { display:flex; flex-direction:column; gap:10px; margin:12px 16px 0; }
+  .choice-btn { background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; font-size:15px; font-weight:600; cursor:pointer; text-align:left; font-family:inherit; color:var(--text); transition:all 0.15s; box-shadow:0 1px 4px rgba(0,0,0,0.05); line-height:1.6; }
+  .choice-btn:active { transform:scale(0.98); }
+  .choice-btn.correct { background:var(--green-light); border-color:var(--green); color:var(--green-dark); }
+  .choice-btn.wrong { background:var(--red-light); border-color:var(--red); color:var(--red); }
+  .choice-btn:disabled { cursor:default; }
+  .choice-en { display:block; font-size:12px; color:var(--text-muted); font-weight:400; margin-top:3px; font-style:italic; }
+
+  .feedback { margin:10px 16px 0; padding:12px 16px; border-radius:12px; font-size:14px; font-weight:600; display:none; align-items:center; gap:8px; }
+  .feedback.show { display:flex; }
+  .feedback.correct { background:var(--green-light); color:var(--green-dark); }
+  .feedback.wrong { background:var(--red-light); color:var(--red); }
+  .feedback-icon { font-size:20px; }
+
+  .next-btn { display:none; margin:12px 16px 0; width:calc(100% - 32px); background:var(--green); color:white; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 3px 10px rgba(34,197,94,0.35); }
+  .next-btn.show { display:block; }
+
+  .result-screen { display:none; margin:20px 16px; text-align:center; }
+  .result-screen.show { display:block; }
+  .result-emoji { font-size:64px; margin-bottom:12px; }
+  .result-title { font-size:24px; font-weight:800; margin-bottom:6px; }
+  .result-score { font-size:48px; font-weight:800; color:var(--green); margin:12px 0; }
+  .result-msg { font-size:15px; color:var(--text-muted); margin-bottom:24px; }
+  .stars { display:flex; justify-content:center; gap:8px; margin:8px 0 16px; font-size:32px; }
+  .nav-btns { display:flex; gap:8px; margin:10px 16px 0; }
+  .nav-btn { flex:1; padding:10px; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; border:1.5px solid var(--border); background:white; color:var(--text-muted); }
+  .nav-btn:active { opacity:0.8; }
+  .nav-btn:disabled { opacity:0.3; cursor:default; }
+  .restart-btn { background:var(--green); color:white; border:none; border-radius:12px; padding:14px 36px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; width:100%; box-shadow:0 3px 10px rgba(34,197,94,0.35); }
+
+  /* Matching game */
+  .match-container { margin:12px 16px 0; position:relative; }
+  .match-instruction { text-align:center; font-size:13px; color:var(--text-muted); margin-bottom:10px; font-weight:600; }
+  .match-columns { display:grid; grid-template-columns:1fr 1fr; gap:8px; position:relative; }
+  .match-col { display:flex; flex-direction:column; gap:8px; }
+  .match-col.right-col { display:flex; flex-direction:column; gap:8px; }
+  .match-item { background:white; border:2px solid var(--border); border-radius:10px; padding:10px 8px; font-size:13px; font-weight:600; cursor:pointer; text-align:center; line-height:1.5; transition:all 0.15s; min-height:52px; display:flex; align-items:center; justify-content:center; }
+  .match-item ruby rt { font-size:9px; color:var(--text-muted); }
+  .match-item.left-item { border-color:#93c5fd; background:#eff6ff; color:#1d4ed8; font-size:15px; }
+  .match-item.right-item { border-color:#fca5a5; background:#fff1f2; color:#b91c1c; }
+  .match-item.left-item.selected { border-color:#3b82f6; background:#dbeafe; }
+  .match-item.matched-correct { border-color:var(--green) !important; background:var(--green-light) !important; color:var(--green-dark) !important; cursor:default; }
+  .match-item.matched-wrong { border-color:var(--red) !important; background:var(--red-light) !important; color:var(--red) !important; }
+  .match-item.matched-wrong::before { content: '✕ '; color:#ef4444; font-weight:800; }
+  .match-item:active:not(.matched-correct) { transform:scale(0.97); }
+  #lineCanvas { display:none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">🌸 <ruby>会話<rt>かいわ</rt></ruby><ruby>練習<rt>れんしゅう</rt></ruby>ゲーム</div>
+      <div class="score-badge">⭐ <span id="score">0</span><ruby>点<rt>てん</rt></ruby></div>
+    </div>
+    <button class="trans-btn off" id="transBtn" onclick="toggleTrans()">
+      <span>🌐</span>
+      <span id="transBtnText"><ruby>英語訳<rt>えいごやく</rt></ruby>: OFF</span>
+    </button>
+  </div>
+
+  <div class="stage-tabs">
+    <button class="stage-tab active" id="tab0" onclick="switchGame(0)">
+      ②<ruby>出身地<rt>しゅっしんち</rt></ruby><br><small style="font-weight:400;font-size:10px">4もん</small>
+    </button>
+    <button class="stage-tab" id="tab1" onclick="switchGame(1)">
+      ③レストランで<ruby>注文<rt>ちゅうもん</rt></ruby><br><small style="font-weight:400;font-size:10px">7もん</small>
+    </button>
+    <button class="stage-tab" id="tab2" onclick="switchGame(2)">
+      ⑤<ruby>旅行<rt>りょこう</rt></ruby>の<ruby>計画<rt>けいかく</rt></ruby><br><small style="font-weight:400;font-size:10px">9もん</small>
+    </button>
+    <button class="stage-tab" id="tab3" onclick="switchGame(3)">
+      ⑥好きなもの<br><small style="font-weight:400;font-size:10px">7もん</small>
+    </button>
+    <button class="stage-tab" id="tab4" onclick="switchGame(4)">
+      ⑦<ruby>日本語<rt>にほんご</rt></ruby><ruby>学習<rt>がくしゅう</rt></ruby><br><small style="font-weight:400;font-size:10px">8もん</small>
+    </button>
+  </div>
+
+  <div class="unit-title" id="unitTitle"></div>
+
+  <div class="progress-wrap">
+    <div class="progress-info">
+      <span><ruby>問題<rt>もんだい</rt></ruby> <span id="qNum">1</span> / <span id="qTotal">4</span></span>
+      <span><ruby>正解<rt>せいかい</rt></ruby>: <span id="correctCount">0</span></span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="question-card" id="questionCard">
+    <div class="q-label">QUESTION</div>
+    <div class="q-topic" id="qTopic"></div>
+    <div class="q-english" id="qEnglish" style="display:none"></div>
+  </div>
+
+  <div class="choices" id="choices"></div>
+
+  <!-- Matching game (game3/4/5) -->
+  <div class="match-container" id="matchContainer" style="display:none">
+    <div class="match-instruction">質問の答えを正しい順番で選ぼう</div>
+    <div id="g5Topic" style="text-align:center;font-size:13px;font-weight:800;color:var(--green-dark);margin-bottom:8px;display:none"></div>
+    <div class="match-columns" id="matchColumns">
+      <svg id="lineCanvas"></svg>
+      <div class="match-col" id="leftCol"></div>
+      <div class="match-col right-col" id="rightCol"></div>
+    </div>
+  </div>
+
+  <div class="feedback" id="feedback">
+    <span class="feedback-icon" id="feedbackIcon"></span>
+    <span id="feedbackText"></span>
+  </div>
+
+  <button class="next-btn" id="nextBtn" onclick="nextQuestion()">
+    つぎの<ruby>問題<rt>もんだい</rt></ruby>へ →
+  </button>
+
+  <!-- Nav buttons -->
+  <div class="nav-btns" id="navBtns">
+    <button class="nav-btn prev-btn" id="prevBtn" onclick="prevQuestion()">← もどる</button>
+    <button class="nav-btn next-nav-btn" id="nextNavBtn" onclick="skipQuestion()">とばす →</button>
+  </div>
+
+  <div class="result-screen" id="resultScreen">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <div class="result-title"><ruby>結果<rt>けっか</rt></ruby></div>
+    <div class="stars" id="starsDisplay"></div>
+    <div class="result-score"><span id="finalScore">0</span> / <span id="finalTotal">4</span></div>
+    <div class="result-msg" id="resultMsg"></div>
+    <button class="restart-btn" onclick="restart()">もう<ruby>一度<rt>いちど</rt></ruby><ruby>挑戦<rt>ちょうせん</rt></ruby>する 🔄</button>
+  </div>
+
+</div>
+<script>
+// ===== DATA =====
+const games = [
+  {
+    title: `②<ruby>自分<rt>じぶん</rt></ruby>の<ruby>出身地<rt>しゅっしんち</rt></ruby>`,
+    answers: [
+      { text: `ベトナムのホーチミン（という<ruby>町<rt>まち</rt></ruby>）です。`, en: "It's Ho Chi Minh City in Vietnam." },
+      { text: `<ruby>安<rt>やす</rt></ruby>くておいしいレストランがたくさんあって、にぎやかです。`, en: "There are many cheap and delicious restaurants, and it's lively." },
+      { text: `ベトナムの<ruby>南<rt>みなみ</rt></ruby>にあります。`, en: "It's in the south of Vietnam." },
+      { text: `<ruby>飛行機<rt>ひこうき</rt></ruby>で6<ruby>時間<rt>じかん</rt></ruby><ruby>半<rt>はん</rt></ruby>ぐらいです。`, en: "It's about 6.5 hours by plane." }
+    ],
+    questions: [
+      { topic: `<ruby>出身<rt>しゅっしん</rt></ruby>はどちらですか？`, topicEn: "Where are you from?", answerIdx: 0 },
+      { topic: `ホーチミンは、どんなところですか？`, topicEn: "What kind of place is Ho Chi Minh City?", answerIdx: 1 },
+      { topic: `どこにありますか？`, topicEn: "Where is it located?", answerIdx: 2 },
+      { topic: `<ruby>日本<rt>にほん</rt></ruby>からどのぐらいかかりますか？`, topicEn: "How long does it take from Japan?", answerIdx: 3 }
+    ]
+  },
+  {
+    title: `③レストランで<ruby>注文<rt>ちゅうもん</rt></ruby>`,
+    answers: [
+      { text: `<ruby>2人<rt>ふたり</rt></ruby>です。`, en: "Two people." },
+      { text: `テーブルでお<ruby>願<rt>ねが</rt></ruby>いします。`, en: "A table, please." },
+      { text: `おすすめは<ruby>何<rt>なん</rt></ruby>ですか？`, en: "What do you recommend?" },
+      { text: `<ruby>生<rt>なま</rt></ruby>の<ruby>魚<rt>さかな</rt></ruby>が<ruby>苦手<rt>にがて</rt></ruby>なんですが・・・・。ほかに<ruby>何<rt>なに</rt></ruby>かありますか？`, en: "I'm not good with raw fish... Is there anything else?" },
+      { text: `ご<ruby>飯<rt>はん</rt></ruby>、<ruby>大盛<rt>おおも</rt></ruby>りでお<ruby>願<rt>ねが</rt></ruby>いします。`, en: "Large rice, please." },
+      { text: `<ruby>先<rt>さき</rt></ruby>にお<ruby>願<rt>ねが</rt></ruby>いします。`, en: "Before the meal, please." },
+      { text: `<ruby>別々<rt>べつべつ</rt></ruby>でお<ruby>願<rt>ねが</rt></ruby>いします。`, en: "Separate checks, please." }
+    ],
+    questions: [
+      { topic: `お<ruby>客様<rt>きゃくさま</rt></ruby>、<ruby>何名様<rt>なんめいさま</rt></ruby>ですか？`, topicEn: "How many people?", answerIdx: 0 },
+      { topic: `テーブルと<ruby>座敷<rt>ざしき</rt></ruby>がございますが……。`, topicEn: "We have tables and tatami seating...", answerIdx: 1 },
+      { topic: `ご<ruby>注文<rt>ちゅうもん</rt></ruby>、お<ruby>決<rt>き</rt></ruby>まりですか？`, topicEn: "Are you ready to order?", answerIdx: 2 },
+      { topic: `<ruby>人気<rt>にんき</rt></ruby>があるのは、お<ruby>刺身定食<rt>さしみていしょく</rt></ruby>です。`, topicEn: "The popular item is the sashimi set meal.", answerIdx: 3 },
+      { topic: `ご<ruby>飯<rt>はん</rt></ruby>の<ruby>量<rt>りょう</rt></ruby>は、どうなさいますか？`, topicEn: "How much rice would you like?", answerIdx: 4 },
+      { topic: `アイスコーヒーは、いつお<ruby>持<rt>も</rt></ruby>ちしますか？`, topicEn: "When shall I bring the iced coffee?", answerIdx: 5 },
+      { topic: `お<ruby>会計<rt>かいけい</rt></ruby>は、ごいっしょでよろしいですか？`, topicEn: "Shall I put it all on one bill?", answerIdx: 6 }
+    ]
+  }
+];
+
+// ===== GAME 3: 好きなもの (1 question at a time, sequential answers) =====
+const game3 = {
+  title: `⑥好きなもの`,
+  questions: [
+    {
+      left: `何が好きですか？`,
+      answers: [
+        `ゲームが好きです。`,
+        `いちばん好きなゲームは『刀剣乱舞（とうけんらんぶ）』です。`
+      ]
+    },
+    {
+      left: `どんなものですか？`,
+      answers: [
+        `日本の刀（かたな）から生まれたキャラクターを集めて、敵（てき）と戦（たたか）うゲームです。`
+      ]
+    },
+    {
+      left: `どんなところが好きですか？`,
+      answers: [
+        `キャラクターがおもしろいんです。`,
+        `刀（かたな）が人間のキャラクターになっていて、強さや得意なことが違うんです。`,
+        `ゲーム以外（いがい）でも、いろいろ楽しめるんですよ。`,
+        `舞台（ぶたい）では、イケメン俳優（はいゆう）がそっくりに演（えん）じていて、すごくすてきなんです。`
+      ]
+    }
+  ]
+};
+
+const G3_TOTAL = game3.questions.reduce((s, q) => s + q.answers.length, 0); // 7
+
+// Flatten all answers once
+const g3AllAnswers = [];
+game3.questions.forEach((q, qIdx) => {
+  q.answers.forEach((text, stepIdx) => g3AllAnswers.push({ text, qIdx, stepIdx }));
+});
+
+// ===== GAME 4: 日本語学習の経験 =====
+const game4 = {
+  title: `⑦日本語学習の経験`,
+  questions: [
+    {
+      left: `どうして日本語の勉強を始めたの？`,
+      answers: [
+        `日本のアニメが大好きだったから。`,
+        `最初（さいしょ）は吹き替え（ふきかえ）で見てたんだけど、日本語でセリフがわかるようになりたかったんだ。`
+      ]
+    },
+    {
+      left: `日本語の学習の経験①`,
+      answers: [
+        `それで、高校生のとき、アニメ部に入ったんだ。`,
+        `日本のアニメのアテレコをやって、すごく盛り上がった（もりあがった）んだ。`
+      ]
+    },
+    {
+      left: `日本語の学習の経験②`,
+      answers: [
+        `それから日本に留学したんだ。`,
+        `今、専門学校（せんもんがっこう）でアニメ制作（せいさく）の勉強をしてる。`,
+        `学校で、仲間（なかま）がたくさんできて、毎日楽しいよ。`
+      ]
+    },
+    {
+      left: `将来したいこと`,
+      answers: [
+        `将来は、勉強したことを活かして、アニメとかゲームとかのキャラクターをデザインする仕事ができればと思ってるんだ。`
+      ]
+    }
+  ]
+};
+
+const G4_TOTAL = game4.questions.reduce((s, q) => s + q.answers.length, 0); // 8
+
+const g4AllAnswers = [];
+game4.questions.forEach((q, qIdx) => {
+  q.answers.forEach((text, stepIdx) => g4AllAnswers.push({ text, qIdx, stepIdx }));
+});
+
+// ===== GAME 5 (tab2): ⑤旅行の計画 — conversation matching =====
+// Left col = Role A, Right col = Role B, select in order
+const game5 = {
+  title: `⑤旅行（りょこう）の計画（けいかく）`,
+  questions: [
+    {
+      topic: `①行き先（いきさき）`,
+      lines: [
+        { role: 'A', text: `行き先はどこにしますか？` },
+        { role: 'B', text: `どんなところがいいですか？` },
+        { role: 'A', text: `私は、景色（けしき）がきれいなところがいいです。` },
+        { role: 'B', text: `じゃあ、富士山（ふじさん）の近くはどうですか？` },
+        { role: 'B', text: `すごくきれいだそうです。` },
+        { role: 'A', text: `そうですか。じゃあ、そうしましょう。` }
+      ]
+    },
+    {
+      topic: `②すること`,
+      lines: [
+        { role: 'A', text: `そこで何をしますか？` },
+        { role: 'B', text: `湖（みずうみ）でボートに乗れますよ。乗りませんか？` },
+        { role: 'A', text: `いいですね。` }
+      ]
+    },
+    {
+      topic: `③行き方（いきかた）`,
+      lines: [
+        { role: 'A', text: `どうやって行きますか？` },
+        { role: 'B', text: `バスが安くて便利だって先輩（せんぱい）が言ってました。` },
+        { role: 'A', text: `そうですか。じゃあ、バスにしましょう。` }
+      ]
+    }
+  ]
+};
+
+// Flatten all lines: [{text, role, qIdx, lineIdx}]
+const g5AllLines = [];
+game5.questions.forEach((q, qIdx) => {
+  q.lines.forEach((line, lineIdx) => g5AllLines.push({ ...line, qIdx, lineIdx }));
+});
+const G5_TOTAL = g5AllLines.length - game5.questions.length; // 9 (excluding starters)
+
+// Game5 state
+let g5QIdx = 0;
+let g5Step = 0;
+let g5CorrectCount = 0;
+
+function initGame5() {
+  g5QIdx = 0;
+  g5Step = 0;
+  g5CorrectCount = 0;
+  score = 0;
+  correctCount = 0;
+  document.getElementById('score').textContent = 0;
+  document.getElementById('correctCount').textContent = 0;
+  document.getElementById('qTotal').textContent = G5_TOTAL;
+  document.getElementById('finalTotal').textContent = G5_TOTAL;
+  document.getElementById('unitTitle').innerHTML = game5.title;
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
+  document.getElementById('nextBtn').classList.remove('show');
+  document.getElementById('resultScreen').classList.remove('show');
+  document.getElementById('questionCard').style.display = 'none';
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('matchContainer').style.display = 'block';
+  document.getElementById('qNum').textContent = '全';
+  g5Render();
+  updateNavBtns();
+}
+
+function g5BuildColumns() {
+  const q = game5.questions[g5QIdx];
+  document.getElementById('lineCanvas').innerHTML = '';
+  const leftCol = document.getElementById('leftCol');
+  const rightCol = document.getElementById('rightCol');
+  leftCol.innerHTML = '';
+  rightCol.innerHTML = '';
+
+  const topicEl = document.getElementById('g5Topic');
+  topicEl.textContent = q.topic;
+  topicEl.style.display = 'block';
+  document.querySelector('.match-instruction').textContent = 'AさんとBさんが話しています。正しい順番は？';
+  document.querySelector('.match-instruction').style.display = 'block';
+
+  // Column headers
+  const headerA = document.createElement('div');
+  headerA.style.cssText = 'text-align:center;font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:2px;';
+  headerA.textContent = 'Aさん';
+  leftCol.appendChild(headerA);
+
+  const headerB = document.createElement('div');
+  headerB.style.cssText = 'text-align:center;font-size:13px;font-weight:800;color:#b91c1c;margin-bottom:2px;';
+  headerB.textContent = 'Bさん';
+  rightCol.appendChild(headerB);
+
+  // Step 0: starter line fixed at top (green, not selectable)
+  const firstLine = q.lines[0];
+  const startEl = document.createElement('div');
+  startEl.className = 'match-item left-item matched-correct';
+  startEl.id = 'g5conv_0';
+  startEl.innerHTML = `⭐ ` + firstLine.text + ` <span id="g5StepCounter" style="font-size:12px;font-weight:700;color:var(--green-dark)">0/${q.lines.length - 1}</span>`;
+  leftCol.appendChild(startEl);
+
+  // Placeholder divs for future answered lines (hidden initially)
+  for (let i = 1; i < q.lines.length; i++) {
+    const line = q.lines[i];
+    const col = line.role === 'A' ? leftCol : rightCol;
+    const ph = document.createElement('div');
+    ph.id = `g5conv_${i}`;
+    ph.className = 'match-item ' + (line.role === 'A' ? 'left-item' : 'right-item') + ' matched-correct';
+    ph.innerHTML = line.text;
+    ph.style.display = 'none';
+    col.appendChild(ph);
+  }
+
+  // All remaining choices (lines 1+) as selectable buttons
+  // Left (A): only this question's A lines (no distractors to avoid confusion)
+  const restA = q.lines.filter((l, i) => i > 0 && l.role === 'A').map(l => l.text);
+  const restB = q.lines.filter((l, i) => i > 0 && l.role === 'B').map(l => l.text);
+
+  const distB = shuffle(g5AllLines.filter(l => l.qIdx !== g5QIdx && l.role === 'B').map(l => l.text))
+    .slice(0, Math.max(0, 3 - restB.length));
+
+  shuffle(restA).forEach(text => {
+    const el = document.createElement('div');
+    el.className = 'match-item left-item';
+    el.innerHTML = text;
+    el.dataset.text = text;
+    el.dataset.role = 'A';
+    el.onclick = () => g5OnTap(text, el);
+    leftCol.appendChild(el);
+  });
+
+  shuffle([...restB, ...distB]).forEach(text => {
+    const el = document.createElement('div');
+    el.className = 'match-item right-item';
+    el.innerHTML = text;
+    el.dataset.text = text;
+    el.dataset.role = 'B';
+    el.onclick = () => g5OnTap(text, el);
+    rightCol.appendChild(el);
+  });
+
+  // Auto-skip step 0
+  if (g5Step === 0) g5Step = 1;
+
+  updateNavBtns();
+}
+
+function g5Render() {
+  g5BuildColumns();
+}
+
+function g5OnTap(text, el) {
+  if (el.classList.contains('matched-correct') || el.classList.contains('matched-wrong')) return;
+  const q = game5.questions[g5QIdx];
+  const nextLine = q.lines[g5Step];
+  const correct = text === nextLine.text && el.dataset.role === nextLine.role;
+
+  if (correct) {
+    // Show the placeholder conversation item
+    const ph = document.getElementById(`g5conv_${g5Step}`);
+    if (ph) ph.style.display = '';
+    // Remove the choice button
+    el.remove();
+
+    g5Step++;
+    g5CorrectCount++;
+    score++;
+    correctCount++;
+    document.getElementById('score').textContent = score;
+    document.getElementById('correctCount').textContent = correctCount;
+    document.getElementById('progressFill').style.width = (g5CorrectCount / G5_TOTAL * 100) + '%';
+
+    const counter = document.getElementById('g5StepCounter');
+    if (counter) {
+      const q2 = game5.questions[g5QIdx];
+      counter.textContent = `${g5Step - 1}/${q2.lines.length - 1}`;
+    }
+
+    if (g5Step >= q.lines.length) {
+      // Question complete → show feedback + next button
+      showFeedback(true);
+      document.getElementById('nextBtn').classList.add('show');
+      document.getElementById('nextBtn').onclick = () => {
+        document.getElementById('feedback').classList.remove('show');
+        document.getElementById('nextBtn').classList.remove('show');
+        if (g5CorrectCount === G5_TOTAL) {
+          document.getElementById('progressFill').style.width = '100%';
+          showResult();
+        } else {
+          g5QIdx++;
+          g5Step = 0;
+          g5BuildColumns();
+        }
+      };
+    }
+  } else {
+    // Show ✕ briefly then remove
+    el.classList.add('matched-wrong');
+    score = Math.max(0, score - 1);
+    document.getElementById('score').textContent = score;
+    setTimeout(() => el.classList.remove('matched-wrong'), 800);
+  }
+}
+
+function getGxData() {
+  if (currentGame === 3) return { game: game3, allAnswers: g3AllAnswers, total: G3_TOTAL };
+  if (currentGame === 4) return { game: game4, allAnswers: g4AllAnswers, total: G4_TOTAL };
+  return null;
+}
+
+function initGameX() {
+  const { game, total } = getGxData();
+  gxQIdx = 0;
+  gxStep = 0;
+  gxCorrectCount = 0;
+  score = 0;
+  correctCount = 0;
+  document.getElementById('score').textContent = 0;
+  document.getElementById('correctCount').textContent = 0;
+  document.getElementById('qTotal').textContent = total;
+  document.getElementById('finalTotal').textContent = total;
+  document.getElementById('unitTitle').innerHTML = game.title;
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
+  document.getElementById('nextBtn').classList.remove('show');
+  document.getElementById('resultScreen').classList.remove('show');
+  document.getElementById('questionCard').style.display = 'none';
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('matchContainer').style.display = 'block';
+  document.getElementById('g5Topic').style.display = 'none';
+  document.querySelector('.match-instruction').style.display = 'block';
+  document.getElementById('qNum').textContent = '全';
+  gxBuildRightPool();
+  gxRebuildColumns();
+}
+
+function gxBuildRightPool() {
+  const { allAnswers } = getGxData();
+  const currentQAnswerIdxs = allAnswers
+    .map((a, i) => a.qIdx === gxQIdx ? i : -1)
+    .filter(i => i !== -1);
+  const others = shuffle(
+    [...Array(allAnswers.length).keys()].filter(i => !currentQAnswerIdxs.includes(i))
+  );
+  const combined = [...currentQAnswerIdxs, ...others];
+  gxRightIdxs = shuffle(combined.slice(0, 4));
+  gxPool = combined.slice(4);
+}
+
+function gxRebuildColumns() {
+  document.getElementById('lineCanvas').innerHTML = '';
+  const leftCol = document.getElementById('leftCol');
+  const rightCol = document.getElementById('rightCol');
+  leftCol.innerHTML = '';
+  rightCol.innerHTML = '';
+
+  const { game, allAnswers } = getGxData();
+  const q = game.questions[gxQIdx];
+
+  // Column headers (⑥好きなもののみ)
+  if (currentGame === 3) {
+    const headerA = document.createElement('div');
+    headerA.style.cssText = 'text-align:center;font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:2px;';
+    headerA.textContent = 'Aさん';
+    leftCol.appendChild(headerA);
+
+    const headerB = document.createElement('div');
+    headerB.style.cssText = 'text-align:center;font-size:13px;font-weight:800;color:#b91c1c;margin-bottom:2px;';
+    headerB.textContent = 'Bさん';
+    rightCol.appendChild(headerB);
+  }
+
+  // Left: question label (fixed at top)
+  const leftEl = document.createElement('div');
+  leftEl.className = 'match-item left-item matched-correct';
+  leftEl.id = 'gxLeftLabel';
+  leftEl.innerHTML = q.left + `<br><span id="gxStepCounter" style="font-size:12px;font-weight:700;color:var(--green-dark)">${gxStep}/${q.answers.length}</span>`;
+  leftCol.appendChild(leftEl);
+
+  // Right: already answered steps shown as green at top
+  for (let i = 0; i < gxStep; i++) {
+    const ph = document.createElement('div');
+    ph.className = 'match-item right-item matched-correct';
+    ph.id = `gxconv_${i}`;
+    ph.innerHTML = allAnswers.find(a => a.qIdx === gxQIdx && a.stepIdx === i)?.text || '';
+    rightCol.appendChild(ph);
+  }
+
+  // Right: placeholder for future answers (hidden)
+  for (let i = gxStep; i < q.answers.length; i++) {
+    const ph = document.createElement('div');
+    ph.className = 'match-item right-item matched-correct';
+    ph.id = `gxconv_${i}`;
+    ph.innerHTML = allAnswers.find(a => a.qIdx === gxQIdx && a.stepIdx === i)?.text || '';
+    ph.style.display = 'none';
+    rightCol.appendChild(ph);
+  }
+
+  // Right: selectable choices (remaining answers + distractors)
+  gxRightIdxs.forEach((aIdx) => {
+    const a = allAnswers[aIdx];
+    const el = document.createElement('div');
+    el.className = 'match-item right-item';
+    el.innerHTML = a.text;
+    el.dataset.aIdx = aIdx;
+    el.onclick = () => gxOnRightTap(aIdx, el);
+    rightCol.appendChild(el);
+  });
+  updateNavBtns();
+}
+
+function gxOnRightTap(aIdx, el) {
+  if (el.classList.contains('matched-correct') || el.classList.contains('matched-wrong')) return;
+
+  const { game, allAnswers, total } = getGxData();
+  const a = allAnswers[aIdx];
+  const correct = a.qIdx === gxQIdx && a.stepIdx === gxStep;
+
+  if (correct) {
+    // Show placeholder for this step
+    const ph = document.getElementById(`gxconv_${gxStep}`);
+    if (ph) ph.style.display = '';
+    // Remove choice
+    el.remove();
+
+    gxStep++;
+    gxCorrectCount++;
+    score++;
+    correctCount++;
+    document.getElementById('score').textContent = score;
+    document.getElementById('correctCount').textContent = correctCount;
+    document.getElementById('progressFill').style.width = (gxCorrectCount / total * 100) + '%';
+
+    // Update left label step counter
+    gxUpdateLeftLabel();
+
+    if (gxStep >= game.questions[gxQIdx].answers.length) {
+      // Question complete → show feedback + next button
+      showFeedback(true);
+      document.getElementById('nextBtn').classList.add('show');
+      document.getElementById('nextBtn').onclick = () => {
+        document.getElementById('feedback').classList.remove('show');
+        document.getElementById('nextBtn').classList.remove('show');
+        if (gxCorrectCount === total) {
+          document.getElementById('progressFill').style.width = '100%';
+          showResult();
+        } else {
+          gxQIdx++;
+          gxStep = 0;
+          gxBuildRightPool();
+          gxRebuildColumns();
+        }
+      };
+    }
+  } else {
+    el.classList.add('matched-wrong');
+    score = Math.max(0, score - 1);
+    document.getElementById('score').textContent = score;
+    setTimeout(() => el.classList.remove('matched-wrong'), 800);
+  }
+}
+
+function gxUpdateLeftLabel() {
+  const counter = document.getElementById('gxStepCounter');
+  if (!counter) return;
+  const { game } = getGxData();
+  const q = game.questions[gxQIdx];
+  counter.textContent = `${gxStep}/${q.answers.length}`;
+}
+
+// Keep old names as aliases for compatibility
+function initGame3() { initGameX(); }
+
+
+window.addEventListener('resize', () => {});
+
+// ===== STATE =====
+let currentGame = 0;
+let showTranslation = false;
+let qOrder = [];
+let currentIdx = 0;
+let score = 0;
+let correctCount = 0;
+let answered = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function init() {
+  score = 0;
+  correctCount = 0;
+  currentIdx = 0;
+
+  if (currentGame === 2) {
+    initGame5();
+    return;
+  }
+  if (currentGame === 3 || currentGame === 4) {
+    initGameX();
+    return;
+  }
+
+  const g = games[currentGame];
+  const total = g.questions.length;
+  qOrder = shuffle([...Array(total).keys()]);
+
+  document.getElementById('score').textContent = 0;
+  document.getElementById('correctCount').textContent = 0;
+  document.getElementById('qTotal').textContent = total;
+  document.getElementById('finalTotal').textContent = total;
+  document.getElementById('unitTitle').innerHTML = g.title;
+  document.getElementById('resultScreen').classList.remove('show');
+  document.getElementById('questionCard').style.display = '';
+  document.getElementById('choices').style.display = '';
+  document.getElementById('matchContainer').style.display = 'none';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
+  document.getElementById('nextBtn').classList.remove('show');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  answered = false;
+  const g = games[currentGame];
+  const total = g.questions.length;
+  const q = g.questions[qOrder[currentIdx]];
+
+  document.getElementById('qNum').textContent = currentIdx + 1;
+  document.getElementById('progressFill').style.width = (currentIdx / total * 100) + '%';
+  document.getElementById('qTopic').innerHTML = q.topic;
+
+  const engEl = document.getElementById('qEnglish');
+  engEl.textContent = q.topicEn;
+  engEl.style.display = showTranslation ? 'block' : 'none';
+
+  const correctIdx = q.answerIdx;
+  const allIdxs = [...Array(g.answers.length).keys()];
+  const otherIdxs = shuffle(allIdxs.filter(i => i !== correctIdx)).slice(0, 3);
+  const choiceIdxs = shuffle([correctIdx, ...otherIdxs]);
+
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  choiceIdxs.forEach(i => {
+    const a = g.answers[i];
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = a.text + (showTranslation ? `<span class="choice-en">${a.en}</span>` : '');
+    btn.dataset.correct = (i === correctIdx) ? 'true' : 'false';
+    btn.onclick = () => selectAnswer(i === correctIdx, btn, choicesEl);
+    choicesEl.appendChild(btn);
+  });
+
+  document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
+  document.getElementById('nextBtn').classList.remove('show');
+  updateNavBtns();
+}
+
+function selectAnswer(isCorrect, btn, container) {
+  if (answered) return;
+  answered = true;
+  container.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    score++;
+    correctCount++;
+    document.getElementById('score').textContent = score;
+    document.getElementById('correctCount').textContent = correctCount;
+    showFeedback(true);
+  } else {
+    btn.classList.add('wrong');
+    container.querySelectorAll('.choice-btn').forEach(b => {
+      if (b.dataset.correct === 'true') b.classList.add('correct');
+    });
+    showFeedback(false);
+  }
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+function showFeedback(isCorrect) {
+  const fb = document.getElementById('feedback');
+  fb.classList.remove('correct', 'wrong');
+  fb.classList.add('show', isCorrect ? 'correct' : 'wrong');
+  document.getElementById('feedbackIcon').textContent = isCorrect ? '✅' : '❌';
+  document.getElementById('feedbackText').innerHTML = isCorrect
+    ? 'すばらしい！<ruby>正解<rt>せいかい</rt></ruby>です！'
+    : 'ざんねん…もう<ruby>一度<rt>いちど</rt></ruby><ruby>挑戦<rt>ちょうせん</rt></ruby>しよう！';
+}
+
+function nextQuestion() {
+  currentIdx++;
+  const total = games[currentGame].questions.length;
+  if (currentIdx >= total) { showResult(); return; }
+  renderQuestion();
+  document.getElementById('feedback').classList.remove('show');
+  document.getElementById('nextBtn').classList.remove('show');
+}
+
+function showResult() {
+  document.getElementById('questionCard').style.display = 'none';
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('matchContainer').style.display = 'none';
+  document.getElementById('feedback').classList.remove('show');
+  document.getElementById('nextBtn').classList.remove('show');
+  document.getElementById('navBtns').style.display = 'none';
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('resultScreen').classList.add('show');
+  document.getElementById('finalScore').textContent = correctCount;
+
+  const total = currentGame === 2 ? G5_TOTAL : currentGame === 3 ? G3_TOTAL : currentGame === 4 ? G4_TOTAL : games[currentGame].questions.length;
+  document.getElementById('finalTotal').textContent = total;
+  let emoji, msg, stars;
+  if (correctCount === total) {
+    emoji = '🏆'; msg = 'パーフェクト！すばらしい！'; stars = '⭐⭐⭐';
+  } else if (correctCount >= Math.ceil(total * 0.6)) {
+    emoji = '😊'; msg = 'よくできました！もう少し！'; stars = '⭐⭐';
+  } else {
+    emoji = '💪'; msg = 'もう一度がんばろう！'; stars = '⭐';
+  }
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultMsg').textContent = msg;
+  document.getElementById('starsDisplay').textContent = stars;
+}
+
+function updateNavBtns() {
+  if (currentGame === 2) {
+    document.getElementById('navBtns').style.display = 'flex';
+    document.getElementById('prevBtn').disabled = g5QIdx === 0;
+    document.getElementById('nextNavBtn').disabled = g5QIdx >= game5.questions.length - 1;
+    return;
+  }
+  if (currentGame === 3 || currentGame === 4) {
+    const g = currentGame === 3 ? game3 : game4;
+    document.getElementById('navBtns').style.display = 'flex';
+    document.getElementById('prevBtn').disabled = gxQIdx === 0;
+    document.getElementById('nextNavBtn').disabled = gxQIdx >= g.questions.length - 1;
+    return;
+  }
+  document.getElementById('navBtns').style.display = 'flex';
+  const total = games[currentGame].questions.length;
+  document.getElementById('prevBtn').disabled = currentIdx === 0;
+  document.getElementById('nextNavBtn').disabled = currentIdx >= total - 1;
+}
+
+function prevQuestion() {
+  if (currentGame === 2) {
+    if (g5QIdx === 0) return;
+    g5QIdx--; g5Step = 0; g5Render(); updateNavBtns(); return;
+  }
+  if (currentGame === 3 || currentGame === 4) {
+    if (gxQIdx === 0) return;
+    gxQIdx--; gxStep = 0; gxBuildRightPool(); gxRebuildColumns(); updateNavBtns(); return;
+  }
+  if (currentIdx === 0) return;
+  currentIdx--;
+  answered = false;
+  renderQuestion();
+  document.getElementById('feedback').classList.remove('show');
+  document.getElementById('nextBtn').classList.remove('show');
+  updateNavBtns();
+}
+
+function skipQuestion() {
+  if (currentGame === 2) {
+    if (g5QIdx >= game5.questions.length - 1) return;
+    g5QIdx++; g5Step = 0; g5Render(); updateNavBtns(); return;
+  }
+  if (currentGame === 3 || currentGame === 4) {
+    const g = currentGame === 3 ? game3 : game4;
+    if (gxQIdx >= g.questions.length - 1) return;
+    gxQIdx++; gxStep = 0; gxBuildRightPool(); gxRebuildColumns(); updateNavBtns(); return;
+  }
+  const total = games[currentGame].questions.length;
+  if (currentIdx >= total - 1) return;
+  currentIdx++;
+  answered = false;
+  renderQuestion();
+  document.getElementById('feedback').classList.remove('show');
+  document.getElementById('nextBtn').classList.remove('show');
+  updateNavBtns();
+}
+
+function restart() { init(); }
+
+function switchGame(n) {
+  if (currentGame === n) return;
+  currentGame = n;
+  for (let i = 0; i <= 4; i++) {
+    document.getElementById(`tab${i}`).classList.toggle('active', n === i);
+  }
+  init();
+}
+
+function toggleTrans() {
+  showTranslation = !showTranslation;
+  document.getElementById('transBtn').className = 'trans-btn ' + (showTranslation ? 'on' : 'off');
+  document.getElementById('transBtnText').innerHTML = showTranslation
+    ? '<ruby>英語訳<rt>えいごやく</rt></ruby>: ON'
+    : '<ruby>英語訳<rt>えいごやく</rt></ruby>: OFF';
+  document.getElementById('qEnglish').style.display = showTranslation ? 'block' : 'none';
+  document.querySelectorAll('.choice-en').forEach(el => {
+    el.style.display = showTranslation ? 'block' : 'none';
+  });
+}
+
+init();
+</script>
+</body>
+</html>
